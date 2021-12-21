@@ -5,10 +5,7 @@
 #define DHTPIN 4                      //온습도센서 핀 번호
 #define DHTTYPE DHT11                 //온습도센서 센서 타입
 
-#define ON 1
-#define OFF 0
-
-bool airpurifier = OFF;
+int airpurifier = '0';
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);   //LCD 초기화 (LCD 주소값, x축, y축)
 DHT dht(4, DHT11);                    //온습도센서 초기화(온습도센서 핀 번호, 센서 타입)
@@ -33,48 +30,38 @@ float Voltage = 0;
 float a = 0;
 
 void setup()
-{     
-Wire.begin();
-
-Serial.begin(9600);
-
-while (!Serial);             // Leonardo: wait for serial monitor
-Serial.println("\nI2C LCD Scanner");
-
-
-//핀모드 입출력 설정
-pinMode(V_LED,OUTPUT);
-pinMode(Vo,INPUT);
-pinMode(FAN,OUTPUT);
-pinMode(R_LED,OUTPUT);
-pinMode(Y_LED,OUTPUT);
-pinMode(G_LED,OUTPUT);
-
-//전원을 켰을 때 LCD 초기값 설정
-lcd.begin();
-lcd.clear();
-lcd.noBacklight();
-delay(500);
-lcd.backlight();
-delay(500);
-lcd.setCursor(0,0);
-lcd.print("  AIR");
-delay(1000);
-lcd.setCursor(6,0);
-lcd.print("PURIFIER");
-delay(1000);
-lcd.setCursor(0,1);
-lcd.print("BP LAB CodingEdu");
-delay(1000);
-lcd.clear();
-
-//특수 문자 선언
-lcd.createChar(0, ug1);
-lcd.createChar(1, ug2);
-lcd.createChar(2, temp);
-lcd.createChar(3, C);
-lcd.createChar(4, humi);
-lcd.createChar(5, per);
+{
+  Wire.begin();
+  
+  Serial.begin(9600);
+  
+  while (!Serial);             // Leonardo: wait for serial monitor
+  Serial.println("\nI2C LCD Scanner");
+  
+  //핀모드 입출력 설정
+  pinMode(V_LED,OUTPUT);
+  pinMode(Vo,INPUT);
+  pinMode(FAN,OUTPUT);
+  pinMode(R_LED,OUTPUT);
+  pinMode(Y_LED,OUTPUT);
+  pinMode(G_LED,OUTPUT);
+  
+  //전원을 켰을 때 LCD 초기값 설정
+  lcd.begin();
+  lcd.clear();
+  lcd.noBacklight();
+  delay(500);
+  lcd.backlight();
+  delay(500);
+  lcd.clear();
+  
+  //특수 문자 선언
+  lcd.createChar(0, ug1);
+  lcd.createChar(1, ug2);
+  lcd.createChar(2, temp);
+  lcd.createChar(3, C);
+  lcd.createChar(4, humi);
+  lcd.createChar(5, per);
 
 
   byte error, address;
@@ -100,24 +87,11 @@ lcd.createChar(5, per);
  
       nDevices++;
     }
-    else if (error==4)
-    {
-      Serial.print("Unknown error at address 0x");
-      if (address<16)
-        Serial.print("0");
-      Serial.println(address,HEX);
-    }    
   }
-  if (nDevices == 0)
-    Serial.println("No I2C devices found\n");
-  else
-    Serial.print("");
-
 }
 
 
-void loop()
-{
+void loop(){
 //온습도값을 저장 할 변수 선언
  unsigned char t = dht.readTemperature();
  unsigned char h = dht.readHumidity();
@@ -139,39 +113,19 @@ void loop()
  
 
   Voltage = Vo_value * 5.0 / 1024.0;
-
- Serial.print("Voltage : ");
- Serial.println(Voltage);
  
  if( Voltage < 0.1 ){
-
   Dust = 0 ;
-  
- } 
-
+ }
  else if ( Voltage < 0.8){
-  
   Dust =10*(5*(Voltage - 0.1));
-         
  }
- 
  else if ( Voltage < 1 ){
-
   Dust = 10 + 15*((Voltage - 0.8)*10);
-  
  }
- 
  else if( Voltage > 1){
-
   Dust = 40 + 16*((Voltage - 1)*10);
-  
- }
- 
-
- Serial.print("Dust : ");
- Serial.println(Dust);
- Serial.println("");
-  
+ }  
   
   delay(500);
  
@@ -196,28 +150,21 @@ void loop()
   lcd.print(str3);
   lcd.write(5);     //특수 문자와 2글자로 된 습도 값 출력
 
-   delay(1500);
-
-
- if (  Dust < 50 ){   //미세먼지 농도 좋음, 초록불, 팬 정지
-        digitalWrite(FAN,LOW);
-        digitalWrite(R_LED,LOW);
-        digitalWrite(Y_LED,LOW);
-        digitalWrite(G_LED,HIGH);
-        
-  } 
+  delay(1500);
   
-  else if ( Dust < 80 ){   //미세먼지 농도 보통, 노란불, 팬 정지
-        digitalWrite(FAN,LOW);
-        digitalWrite(R_LED,LOW);
-        digitalWrite(Y_LED,HIGH);
-        digitalWrite(G_LED,LOW);    
+  if(Serial.available())
+    airpurifier = Serial.read();
+
+  if (airpurifier == '1') {   //미세먼지 농도 나쁨, 빨간불, 팬 동작
+    digitalWrite(FAN,LOW);
+    digitalWrite(R_LED,HIGH);
+    digitalWrite(Y_LED,LOW);  
+    digitalWrite(G_LED,LOW);
   }
-  
-  else if ( Dust > 80 || airpurifier == ON) {   //미세먼지 농도 나쁨, 빨간불, 팬 동작
-        digitalWrite(FAN,HIGH);
-        digitalWrite(R_LED,HIGH);
-        digitalWrite(Y_LED,LOW);
-        digitalWrite(G_LED,LOW);
+  else{
+    digitalWrite(FAN,HIGH);
+    digitalWrite(R_LED,LOW);
+    digitalWrite(Y_LED,LOW);
+    digitalWrite(G_LED,LOW);
   }
 }
