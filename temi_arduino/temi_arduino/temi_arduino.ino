@@ -10,26 +10,49 @@ void setup() {
   SPI.begin();
   mfrc522.PCD_Init();        // Init MFRC522
   dht.begin();
-  servo_init(DOOR_LOCK, DOOR_LOCK_PIN); // attaches the servo on pin to the servo object     
+  servo_init(DOOR_LOCK_PIN); // attaches the servo on pin to the servo object     
 
   strip.begin(); //Init Neopixel
   strip.show();
   pm2008.begin(); //Init fine sensor
   pm2008.command();
-}
+#ifdef PM2008N
+  // wait for PM2008N to be changed to I2C mode
+  delay(10000);
+#endif
+} 
  
 //loop
 void loop() {
-  if( mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial() && tag_state == ABLE) // 태그가 있으면서, 테미가 태그 가능한 상태일 때만 rfid 함수 동작
-    readRFID(mfrc522.uid.uidByte, mfrc522.uid.size);
-
-  Time = millis();
-  if((Time - time_flag) >= dht_frequency){ // read Humidity, every 30s
-    readDHT();
-    readDust();
-    time_flag = Time;
+  
+  if(Serial.available()){
+    pixel_color = Serial.read(); //read led color
+    pixel_led();
+    
+    locker = Serial.read(); //read motor lock
+    locker_control();
   }
-  pixel_led();
+
+  //rfid  
+  if( mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) // 태그가 있으면서, 테미가 태그 가능한 상태일 때만 rfid 함수 동작
+    readRFID(mfrc522.uid.uidByte, mfrc522.uid.size);
+  else
+    rfid_id = id_flag; //untapped  
+
+  //humidity dust
+  Time = millis();
+  if((Time - time_flag) >= dht_frequency){ // 습도, 미세먼지를 읽어 30초마다 출력
+    send_humidity();
+    send_dust();
+    time_flag = Time;
+   }  
+   
+
+//  print in main
+  Serial.print(rfid_id);
+  Serial.print(humidifier);
+  Serial.print(airpurifier);
+  Serial.println();
 }
 
 //Read to RFID uid
@@ -37,7 +60,7 @@ void readRFID(byte *buffer, byte bufferSize){
   for (byte i = 0; i < bufferSize; i++) {
     strID += (mfrc522.uid.uidByte[i] < 0x10 ? "0" : "") + String(mfrc522.uid.uidByte[i], HEX) + (i != 3 ? ":" : "");
   }
-  strID.toUpperCase();
+  strID.toUpperCase(); 
   send_name();
   strID="";
 }
@@ -48,72 +71,67 @@ void send_name(){ // send name to firebase(it can be either a sender or a receiv
 
   for(int i=0; i<known_keys; i++){      
     if(strID == knownKeys[i]){ // tag success
-      Name=Name[i];  
+      rfid_id = i;  //Name[i] -> i
+      id_flag = i;
       break;        
     }
     else{
-      Name="Unregistered";
-      pixel_color="red";
+      rfid_id = 8; // unregistered
+      id_flag = 8;
     }
   }
-  Serial.println(Name);
-  Serial.println();
 }
 
-void readDHT(){ // reading DHT
+void send_humidity(){ // reading DHT
   h = dht.readHumidity();
   if(h<40)
-    humidifier = ON;
+    humidifier = '1';
   else
-    humidifier = OFF;
+    humidifier = '0';
   
-  Serial.print("H"+String(humidifier));
+//  Serial.print(humidifier);
+//  Serial.println(h);
 }
 
-void readDust(){
-  if(pm2008.pm10_grimm > 80)
-    airpurifier = ON;
-  else
-    airpurifier = OFF;
-  
-  Serial.println("A"+String(airpurifier));
+void send_dust(){
+  uint8_t ret = pm2008.read();
+  if (ret == 0){
+    if(pm2008.pm10_grimm > 80)
+      airpurifier = '0';
+    else
+      airpurifier = '1';
+  }
+//  Serial.println(airpurifier);
+//    Serial.println(pm2008.pm10_tsi);
 }
 
 // Servo initiaize
-void servo_init(int door_sel, int pin)
+void servo_init(int pin)
 {
-    servo.attach(pin);
- 
-    if (door_sel == DOOR_LOCK)
-    {
-        locker_unlock();
-        motor_lock = UNLOCK;  // Set doorlock state UNLOCK
-    }
+  servo.attach(pin);
+
+  locker = '1';  // Set doorlock state UNLOCK
+  locker_flag = '0';
+  locker_control();
+
 }
  
 // Function for doorlock unlock
-void locker_unlock()
+void locker_control()
 {
-  if ((motor_lock == LOCK))
-  {
-      control_servo(DOOR_LOCK, UNLOCK, DOOR_LOCK_OPEN_START, DOOR_LOCK_OPEN_STOP);
-      motor_lock = UNLOCK;
+  if(locker_flag == '0' && locker == '1'){
+    control_servo(UNLOCK, DOOR_LOCK_OPEN_START, DOOR_LOCK_OPEN_STOP);
+    locker_flag = locker;
   }
-}
- 
-// Function for doorlock lock
-void locker_lock()
-{
-  if ((motor_lock == UNLOCK))
-  {
-      control_servo(DOOR_LOCK, LOCK, DOOR_LOCK_CLOSE_START, DOOR_LOCK_CLOSE_STOP);
-      motor_lock = LOCK;
-  }
+  else if(locker_flag == '1' && locker == '0'){
+    control_servo(LOCK, DOOR_LOCK_CLOSE_START, DOOR_LOCK_CLOSE_STOP);
+    locker_flag = locker;
+  }  
 }
 
 // Function for control servo angle
-void control_servo(int door_sel, int dir, int st, int ed){
-  if (dir == UNLOCK){
+void control_servo(int dir, int st, int ed){
+  if (dir == 1){
     for (pos = st; pos >= ed; pos--){     // goes from 180 degrees to 0 degrees 
         servo.write(pos);              // tell servo to go to position in variable 'pos'
         delay(20);                       // wait for the servo to reach the position (20ms period)
@@ -121,7 +139,7 @@ void control_servo(int door_sel, int dir, int st, int ed){
   }
   else {
     for (pos = st; pos <= ed; pos++){     // goes from 0 degrees to 180 degrees 
-        servo.write(pos);              // tell servo to go to position in variable 'pos' 
+       servo.write(pos);              // tell servo to go to position in variable 'pos' 
         delay(20);                       // wait for the servo to reach the position (20ms period)
     }
   }
@@ -129,23 +147,21 @@ void control_servo(int door_sel, int dir, int st, int ed){
 
 // led color
 void pixel_led(){
-  if(prev_color == pixel_color) return;
-  
-  if(pixel_color=="blue"){
-    r=0,g=0,b=255;
+  if(prev_color != pixel_color) {
+    if(pixel_color=='0'){ //red
+      r=255,g=0,b=0;
+    }
+    else if(pixel_color=='1'){ //yellow
+      r=255,g=255,b=0;
+    }
+    else if(pixel_color=='2'){ //green
+      r=0,g=255,b=0;
+    }
+    
+    for(int i=0; i<N_LED; i++){
+      strip.setPixelColor(i,r,g,b);
+    }
+    strip.show();
+    prev_color = pixel_color;
   }
-  else if(pixel_color=="green"){
-    r=0,g=255,b=0;
-  }
-  else if(pixel_color=="red"){
-    r=255,g=0,b=0;
-  }
-  else if(pixel_color=="yellow"){
-    r=255,g=255,b=0;
-  }
-  for(int i=0; i<N_LED; i++){
-    strip.setPixelColor(i,r,g,b);
-  }
-  strip.show();
-  prev_color = pixel_color;
 }
