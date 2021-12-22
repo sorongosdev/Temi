@@ -126,9 +126,7 @@ void loop(){
  else if( Voltage > 1){
   Dust = 40 + 16*((Voltage - 1)*10);
  }  
-  
-  delay(500);
- 
+   
   lcd.setCursor(1,0);
   lcd.print("Dust : ");
   sprintf(str1,"%03d",Dust);
@@ -149,8 +147,6 @@ void loop(){
   sprintf(str3,"%02d",h);
   lcd.print(str3);
   lcd.write(5);     //특수 문자와 2글자로 된 습도 값 출력
-
-  delay(1500);
   
   if(Serial.available())
     airpurifier = Serial.read();
