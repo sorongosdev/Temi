@@ -9,21 +9,20 @@ PM2008_I2C pm2008;
 
 //Const
 const String knownKeys[] = {"8B:A8:0C:22","E7:FB:D4:10","C9:98:E3:4F"}; //White, Pink, ID
-const String Name[] = {"DSR","YYR","YJY","CYS","LSH","BJC"};
+//const String Name[] = {"DSR","YYR","YJY","CYS","LSH","BJC"};
 
-String Name="",strID = "", prev_id = "",id_flag = ""; //RFID
-bool tag_state = ABLE;
+String strID = ""; //RFID
+int rfid_id = 9, id_flag=9;
 
-char Char_h, Char_f; //DHT
 double h,f;
-bool humidifier = OFF; //humidifier
-bool airpurifier = OFF; //airpurifier
+char humidifier = '0'; //humidifier
+char airpurifier = '0'; //airpurifier
 
 int pos;    // Servo
-bool motor_lock = LOCK;
+int locker,locker_flag;
 
 int pixel_delay = 100; //pixel
 int r,g,b;
-String pixel_color = "blue", prev_color;
+int pixel_color, prev_color='4';
 
 long unsigned Time,time_flag=0; //Time
