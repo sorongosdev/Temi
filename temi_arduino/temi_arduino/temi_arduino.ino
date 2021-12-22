@@ -110,8 +110,8 @@ void servo_init(int pin)
 {
   servo.attach(pin);
 
-  locker = '1';  // Set doorlock state UNLOCK
-  locker_flag = '0';
+  locker = '7';  // Set doorlock state UNLOCK
+  locker_flag = '6';
   locker_control();
 
 }
@@ -119,11 +119,11 @@ void servo_init(int pin)
 // Function for doorlock unlock
 void locker_control()
 {
-  if(locker_flag == '0' && locker == '1'){
+  if(locker_flag == '6' && locker == '7'){
     control_servo(UNLOCK, DOOR_LOCK_OPEN_START, DOOR_LOCK_OPEN_STOP);
     locker_flag = locker;
   }
-  else if(locker_flag == '1' && locker == '0'){
+  else if(locker_flag == '7' && locker == '6'){
     control_servo(LOCK, DOOR_LOCK_CLOSE_START, DOOR_LOCK_CLOSE_STOP);
     locker_flag = locker;
   }  
@@ -148,13 +148,13 @@ void control_servo(int dir, int st, int ed){
 // led color
 void pixel_led(){
   if(prev_color != pixel_color) {
-    if(pixel_color=='0'){ //red
+    if(pixel_color=='3'){ //red
       r=255,g=0,b=0;
     }
-    else if(pixel_color=='1'){ //yellow
+    else if(pixel_color=='4'){ //yellow
       r=255,g=255,b=0;
     }
-    else if(pixel_color=='2'){ //green
+    else if(pixel_color=='5'){ //green
       r=0,g=255,b=0;
     }
     
