@@ -148,13 +148,13 @@ void control_servo(int dir, int st, int ed){
 // led color
 void pixel_led(){
   if(prev_color != pixel_color) {
-    if(pixel_color=='3'){ //red
+    if(pixel_color=='r'){ //red
       r=255,g=0,b=0;
     }
-    else if(pixel_color=='4'){ //yellow
-      r=255,g=255,b=0;
+    else if(pixel_color=='y'){ //yellow
+      r=255,g=128,b=0;
     }
-    else if(pixel_color=='5'){ //green
+    else if(pixel_color=='g'){ //green
       r=0,g=255,b=0;
     }
     
