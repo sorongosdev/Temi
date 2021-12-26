@@ -11,7 +11,7 @@
 //RFID
 #define RST_PIN         8
 #define SS_PIN          9
-#define known_keys 3
+#define known_keys 6
 
 //rfid
 #define UNABLE 0
